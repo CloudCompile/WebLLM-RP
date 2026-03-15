@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TavernLocal — Offline RP</title>
+<link rel="manifest" href="./manifest.json" />
+<meta name="theme-color" content="#9b6dff" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=IM+Fell+English:ital@0;1&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg-deep:    #0d0b0f;
+  --bg-panel:   #13111a;
+  --bg-card:    #1a1726;
+  --bg-input:   #110f19;
+  --border:     #2e2a3f;
+  --border-glow:#6b4fa0;
+  --accent:     #9b6dff;
+  --accent2:    #e07b54;
+  --accent3:    #54b4e0;
+  --text-main:  #e8e0f0;
+  --text-dim:   #7a718a;
+  --text-char:  #d4a0ff;
+  --text-user:  #a8d8ff;
+  --bubble-char:#1e1630;
+  --bubble-user:#0f1e2e;
+  --scrollbar:  #2a2540;
+  --danger:     #e05454;
+  --success:    #54e07b;
+  --cached:     #54e07b;
+  --uncached:   #e05454;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg-deep); color: var(--text-main); font-family: 'IM Fell English', Georgia, serif; overflow: hidden; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
+
+/* ══════════ LAYOUT ══════════ */
+#app { display: grid; grid-template-columns: 290px 1fr; height: 100vh; }
+
+/* ══════════ SIDEBAR ══════════ */
+#sidebar {
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden;
+}
+
+#sidebar-header {
+  padding: 18px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #1a0e2e 0%, var(--bg-panel) 100%);
+  flex-shrink: 0;
+}
+#sidebar-header h1 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 12px; color: var(--accent);
+  text-shadow: 0 0 18px #7b4fe880; letter-spacing: 1px;
+}
+#sidebar-header p { font-size: 10px; color: var(--text-dim); margin-top: 3px; font-style: italic; }
+
+/* pwa install banner */
+#install-banner {
+  display: none;
+  margin: 8px 12px 0;
+  padding: 7px 10px;
+  background: #1e1630;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: 'Share Tech Mono', monospace;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+#install-banner:hover { background: #2a1f4a; color: var(--text-main); }
+
+.section { padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+
+.section-label {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--text-dim);
+  margin-bottom: 8px; font-family: 'Share Tech Mono', monospace;
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* ── model selector ── */
+#model-list {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 220px; overflow-y: auto;
+  padding-right: 2px;
+}
+
+.model-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.model-item:hover { border-color: var(--border-glow); background: #1a1630; }
+.model-item.selected { border-color: var(--accent); background: #1e1630; }
+
+.model-item-info { flex: 1; min-width: 0; }
+.model-item-name {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px; color: var(--text-main);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.model-item-meta {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; color: var(--text-dim); margin-top: 2px;
+}
+
+.cache-badge {
+  font-size: 9px;
+  font-family: 'Share Tech Mono', monospace;
+  padding: 2px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+.cache-badge.cached   { background: #0a2a14; color: var(--cached); border: 1px solid #1a5a2a; }
+.cache-badge.uncached { background: #2a0a0a; color: var(--uncached); border: 1px solid #5a1a1a; }
+.cache-badge.checking { background: var(--bg-card); color: var(--text-dim); border: 1px solid var(--border); }
+
+.model-group-label {
+  font-size: 9px; font-family: 'Share Tech Mono', monospace;
+  color: var(--text-dim); letter-spacing: 1px;
+  text-transform: uppercase; padding: 4px 2px 2px;
+  opacity: 0.7;
+}
+
+/* status + load btn */
+#engine-status {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 10px; margin-bottom: 8px;
+  font-size: 10px; font-family: 'Share Tech Mono', monospace;
+  color: var(--text-dim);
+}
+#status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-dim); flex-shrink: 0;
+  transition: background 0.3s;
+}
+#status-dot.loading { background: var(--accent2); animation: pulse 1s infinite; }
+#status-dot.ready   { background: var(--success); }
+#status-dot.error   { background: var(--danger); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+#load-btn {
+  width: 100%; padding: 8px;
+  background: linear-gradient(135deg, #3a1f6e, #5a2fa0);
+  border: 1px solid var(--accent); color: var(--text-main);
+  font-family: 'Share Tech Mono', monospace; font-size: 11px;
+  letter-spacing: 1px; cursor: pointer; border-radius: 4px;
+  transition: all 0.2s; text-transform: uppercase;
+}
+#load-btn:hover:not(:disabled) { background: linear-gradient(135deg, #4a2f7e, #7a3fd0); box-shadow: 0 0 12px #6b4fa050; }
+#load-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* progress */
+#progress-wrap { display: none; margin-top: 8px; }
+#progress-bar-bg { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+#progress-bar-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 2px; transition: width 0.3s;
+}
+#progress-text { font-size: 10px; color: var(--text-dim); margin-top: 4px; font-family: 'Share Tech Mono', monospace; }
+
+/* ── character section ── */
+#drop-zone {
+  border: 1px dashed var(--border); border-radius: 6px;
+  padding: 14px 10px; text-align: center;
+  cursor: pointer; transition: all 0.2s;
+  font-size: 11px; color: var(--text-dim); font-style: italic;
+  position: relative;
+}
+#drop-zone:hover, #drop-zone.dragover { border-color: var(--accent); color: var(--text-main); background: #1e1630; }
+#drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+#drop-zone .drop-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+
+#char-card { display: none; margin-top: 10px; }
+#char-avatar-wrap { position: relative; width: 60px; height: 60px; margin: 0 auto 8px; }
+#char-avatar { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; box-shadow: 0 0 16px #6b4fa050; }
+#char-avatar-placeholder { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--text-dim); }
+#char-name { text-align: center; font-family: 'Cinzel Decorative', serif; font-size: 12px; color: var(--text-char); text-shadow: 0 0 10px #9b6dff40; }
+#char-persona { margin-top: 5px; font-size: 11px; color: var(--text-dim); font-style: italic; line-height: 1.5; max-height: 55px; overflow: hidden; position: relative; }
+#char-persona::after { content:''; position:absolute; bottom:0;left:0;right:0;height:18px; background: linear-gradient(transparent, var(--bg-panel)); }
+
+#new-chat-btn {
+  width: 100%; margin-top: 8px; padding: 6px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-dim); font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; cursor: pointer; border-radius: 4px;
+  letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s;
+}
+#new-chat-btn:hover { border-color: var(--accent); color: var(--text-main); }
+
+/* ── settings ── */
+.setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+.setting-row:last-child { margin-bottom: 0; }
+.setting-row label { font-size: 11px; color: var(--text-dim); font-family: 'Share Tech Mono', monospace; }
+.setting-row input[type=range] { width: 95px; accent-color: var(--accent); }
+.setting-val { font-size: 10px; color: var(--accent); font-family: 'Share Tech Mono', monospace; width: 30px; text-align: right; }
+.setting-row input[type=text] {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-main); font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; padding: 3px 7px; border-radius: 3px; width: 80px;
+}
+
+/* offline indicator */
+#offline-badge {
+  display: none;
+  margin: 6px 14px 0;
+  padding: 5px 10px;
+  background: #1a100a;
+  border: 1px solid var(--accent2);
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--accent2);
+  font-family: 'Share Tech Mono', monospace;
+  text-align: center;
+}
+
+#sidebar-footer {
+  margin-top: auto; padding: 10px 14px;
+  font-size: 10px; color: var(--text-dim);
+  font-family: 'Share Tech Mono', monospace;
+  border-top: 1px solid var(--border); text-align: center;
+  font-style: italic; flex-shrink: 0;
+}
+
+/* ══════════ MAIN ══════════ */
+#main {
+  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+  background: var(--bg-deep);
+  background-image: radial-gradient(ellipse at 20% 0%, #1a0e2e30 0%, transparent 60%),
+                    radial-gradient(ellipse at 80% 100%, #0e1a2e30 0%, transparent 60%);
+}
+
+#topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 18px; border-bottom: 1px solid var(--border);
+  background: var(--bg-panel); min-height: 50px; flex-shrink: 0;
+}
+#topbar-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border-glow); object-fit: cover; }
+#topbar-avatar-ph { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 15px; }
+#topbar-name { font-family: 'Cinzel Decorative', serif; font-size: 12px; color: var(--text-char); flex: 1; }
+#topbar-hint { font-size: 10px; color: var(--text-dim); font-style: italic; }
+#topbar-model-badge {
+  font-size: 9px; font-family: 'Share Tech Mono', monospace;
+  color: var(--text-dim); padding: 2px 7px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 10px; display: none;
+}
+
+#messages { flex: 1; overflow-y: auto; padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+
+/* welcome */
+#welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 40px; text-align: center; }
+#welcome h2 { font-family: 'Cinzel Decorative', serif; font-size: 20px; color: var(--accent); text-shadow: 0 0 30px #6b4fa060; }
+#welcome p { font-size: 13px; color: var(--text-dim); font-style: italic; max-width: 380px; line-height: 1.7; }
+.step { display: flex; align-items: center; gap: 10px; text-align: left; font-size: 11px; color: var(--text-dim); font-family: 'Share Tech Mono', monospace; }
+.step-num { width: 20px; height: 20px; border-radius: 50%; background: var(--border); border: 1px solid var(--border-glow); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--accent); flex-shrink: 0; }
+
+/* messages */
+.msg { display: flex; gap: 10px; max-width: 82%; animation: fadeSlide 0.22s ease; }
+@keyframes fadeSlide { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
+.msg.char { align-self: flex-start; }
+.msg.user { align-self: flex-end; flex-direction: row-reverse; }
+
+.msg-avatar { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border); object-fit: cover; flex-shrink: 0; align-self: flex-end; }
+.msg-avatar-ph { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; align-self: flex-end; }
+
+.msg-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.msg-sender { font-size: 10px; font-family: 'Share Tech Mono', monospace; letter-spacing: 0.5px; }
+.msg.char .msg-sender { color: var(--text-char); }
+.msg.user .msg-sender { color: var(--text-user); text-align: right; }
+
+.msg-bubble { padding: 9px 13px; border-radius: 8px; font-size: 14px; line-height: 1.7; word-wrap: break-word; border: 1px solid transparent; }
+.msg.char .msg-bubble { background: var(--bubble-char); border-color: var(--border); color: var(--text-main); border-radius: 2px 8px 8px 8px; }
+.msg.user .msg-bubble { background: var(--bubble-user); border-color: #1e3a52; color: var(--text-user); border-radius: 8px 2px 8px 8px; }
+.msg-bubble em { color: var(--text-dim); font-style: italic; }
+
+/* typing */
+#typing-indicator { display: none; align-self: flex-start; padding: 10px 14px; background: var(--bubble-char); border: 1px solid var(--border); border-radius: 2px 8px 8px 8px; gap: 5px; align-items: center; }
+#typing-indicator.show { display: flex; }
+.typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); animation: typingBounce 1.2s infinite; }
+.typing-dot:nth-child(2){animation-delay:0.2s} .typing-dot:nth-child(3){animation-delay:0.4s}
+@keyframes typingBounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px);background:var(--accent)} }
+
+/* input */
+#input-area { border-top: 1px solid var(--border); background: var(--bg-panel); padding: 10px 18px 12px; flex-shrink: 0; }
+#input-row { display: flex; gap: 8px; align-items: flex-end; }
+#user-input {
+  flex: 1; background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-main); font-family: 'IM Fell English', Georgia, serif;
+  font-size: 14px; padding: 9px 13px; border-radius: 4px;
+  resize: none; min-height: 42px; max-height: 130px; line-height: 1.5;
+  transition: border-color 0.2s;
+}
+#user-input:focus { outline: none; border-color: var(--border-glow); }
+#user-input::placeholder { color: var(--text-dim); font-style: italic; }
+#user-input:disabled { opacity: 0.5; }
+
+#send-btn {
+  width: 42px; height: 42px;
+  background: linear-gradient(135deg, #3a1f6e, #5a2fa0);
+  border: 1px solid var(--accent); color: var(--text-main);
+  font-size: 17px; cursor: pointer; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; flex-shrink: 0;
+}
+#send-btn:hover:not(:disabled) { background: linear-gradient(135deg, #5a2fa0, #7a3fd0); box-shadow: 0 0 12px #6b4fa060; }
+#send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+#input-hints { display: flex; gap: 8px; margin-top: 6px; font-size: 10px; color: var(--text-dim); font-family: 'Share Tech Mono', monospace; flex-wrap: wrap; }
+.hint-chip { padding: 2px 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.hint-chip:hover { border-color: var(--accent); color: var(--text-main); }
+
+/* toast */
+#toast { position: fixed; bottom: 80px; right: 20px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: 'Share Tech Mono', monospace; transform: translateY(20px); opacity: 0; transition: all 0.3s; z-index: 100; max-width: 280px; pointer-events: none; }
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.error   { border-color: var(--danger); color: var(--danger); }
+#toast.success { border-color: var(--success); color: var(--success); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ════════ SIDEBAR ════════ -->
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <h1>⚗ TavernLocal</h1>
+      <p>Fully offline roleplay · WebLLM + WebGPU</p>
+    </div>
+
+    <div id="offline-badge">📶 Offline — using cached model</div>
+    <div id="install-banner">📲 Install as app (click to install)</div>
+
+    <!-- MODEL SECTION -->
+    <div class="section">
+      <div class="section-label">⚙ Model Engine</div>
+
+      <div id="model-list">
+        <!-- Injected by JS -->
+      </div>
+
+      <div id="engine-status">
+        <div id="status-dot"></div>
+        <span id="status-text">No model loaded</span>
+      </div>
+
+      <button id="load-btn">⚡ Load Selected Model</button>
+
+      <div id="progress-wrap">
+        <div id="progress-bar-bg"><div id="progress-bar-fill"></div></div>
+        <div id="progress-text">Initializing…</div>
+      </div>
+    </div>
+
+    <!-- CHARACTER SECTION -->
+    <div class="section">
+      <div class="section-label">🃏 Character Card</div>
+      <div id="drop-zone">
+        <input type="file" id="card-file-input" accept=".png,.json" />
+        <span class="drop-icon">🃏</span>
+        Drop PNG or JSON card here<br/>or click to browse
+      </div>
+      <div id="char-card">
+        <div id="char-avatar-wrap">
+          <img id="char-avatar" src="" alt="" style="display:none" />
+          <div id="char-avatar-placeholder">🧙</div>
+        </div>
+        <div id="char-name">—</div>
+        <div id="char-persona"></div>
+        <button id="new-chat-btn">↺ New Chat</button>
+      </div>
+    </div>
+
+    <!-- SETTINGS SECTION -->
+    <div class="section">
+      <div class="section-label">✦ Generation</div>
+      <div class="setting-row">
+        <label>Temperature</label>
+        <input type="range" id="temp-slider" min="0" max="2" step="0.05" value="0.9" />
+        <span class="setting-val" id="temp-val">0.9</span>
+      </div>
+      <div class="setting-row">
+        <label>Max tokens</label>
+        <input type="range" id="maxtok-slider" min="64" max="800" step="16" value="300" />
+        <span class="setting-val" id="maxtok-val">300</span>
+      </div>
+      <div class="setting-row">
+        <label>Your name</label>
+        <input id="user-name-input" type="text" value="You" />
+      </div>
+    </div>
+
+    <div id="sidebar-footer">All inference runs locally · Zero data sent anywhere</div>
+  </aside>
+
+  <!-- ════════ MAIN ════════ -->
+  <main id="main">
+    <div id="topbar">
+      <div id="topbar-avatar-wrap">
+        <img id="topbar-avatar" src="" alt="" style="display:none" />
+        <div id="topbar-avatar-ph">🎭</div>
+      </div>
+      <span id="topbar-name">TavernLocal</span>
+      <div id="topbar-model-badge"></div>
+      <span id="topbar-hint">Load a model &amp; card to begin</span>
+    </div>
+
+    <div id="messages">
+      <div id="welcome">
+        <h2>⚗ TavernLocal</h2>
+        <p>Fully offline roleplay powered by WebLLM.<br/>The AI runs entirely in your browser — no API, no cloud, no cost.</p>
+        <div class="step"><div class="step-num">1</div>Pick a model and click <strong style="color:var(--accent);margin:0 4px">Load</strong> — first load downloads it, then it's cached forever</div>
+        <div class="step"><div class="step-num">2</div>Drop your SillyTavern character card (PNG with embedded data, or JSON)</div>
+        <div class="step"><div class="step-num">3</div>Start your story ✨</div>
+        <p style="font-size:11px;margin-top:6px;color:#6a6080">⚠ Requires a browser with WebGPU support (Chrome 113+). First model download is 1–5GB depending on selection.</p>
+      </div>
+    </div>
+
+    <div id="typing-indicator">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+
+    <div id="input-area">
+      <div id="input-row">
+        <textarea id="user-input" rows="1" placeholder="Say something… (Shift+Enter for newline)" disabled></textarea>
+        <button id="send-btn" disabled title="Send">➤</button>
+      </div>
+      <div id="input-hints">
+        <span class="hint-chip" data-hint="*looks around cautiously*">*action*</span>
+        <span class="hint-chip" data-hint="&quot;Hello there.&quot;">dialogue</span>
+        <span class="hint-chip" data-hint="[OOC: please continue the scene]">[OOC]</span>
+        <span class="hint-chip" id="regen-btn">↺ regen</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════
+     WebLLM via ESM CDN
+══════════════════════════════════════════════════ -->
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+// ══════════════════════════════════════════════════
+// MODEL REGISTRY
+// ══════════════════════════════════════════════════
+const MODEL_GROUPS = [
+  {
+    label: "⚡ Ultra Light  (~400MB–880MB)",
+    models: [
+      { id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",  name: "Qwen 2.5 0.5B · q4f16", size: "~400MB", ctx: "4K" },
+      { id: "Llama-3.2-1B-Instruct-q4f16_1-MLC",   name: "Llama 3.2 1B · q4f16",  size: "879MB",  ctx: "4K" },
+    ]
+  },
+  {
+    label: "🔥 Light  (~1–2.5GB, Recommended)",
+    models: [
+      { id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",  name: "Qwen 2.5 1.5B · q4f16",  size: "~1GB",   ctx: "8K", star: true },
+      { id: "gemma-2-2b-it-q4f16_1-MLC",           name: "Gemma 2 2B · q4f16",      size: "~1.5GB", ctx: "4K" },
+      { id: "Phi-3.5-mini-instruct-q4f16_1-MLC",   name: "Phi 3.5 Mini · q4f16",    size: "~2.2GB", ctx: "4K" },
+      { id: "Llama-3.2-3B-Instruct-q4f16_1-MLC",   name: "Llama 3.2 3B · q4f16",    size: "2.2GB",  ctx: "4K", star: true },
+    ]
+  },
+  {
+    label: "🧠 Medium  (~4GB)",
+    models: [
+      { id: "Qwen2.5-7B-Instruct-q4f16_1-MLC",     name: "Qwen 2.5 7B · q4f16",    size: "~4GB",   ctx: "8K" },
+      { id: "Mistral-7B-Instruct-v0.3-q4f16_1-MLC", name: "Mistral 7B v0.3 · q4f16", size: "4.1GB",  ctx: "4K" },
+      { id: "Llama-3.1-8B-Instruct-q4f16_1-MLC",   name: "Llama 3.1 8B · q4f16",    size: "4.3GB",  ctx: "4K" },
+    ]
+  },
+  {
+    label: "🏋 Heavy  (5GB+)",
+    models: [
+      { id: "Llama-3.1-8B-Instruct-q4f32_1-MLC",   name: "Llama 3.1 8B · q4f32",   size: "5.5GB",  ctx: "4K" },
+    ]
+  }
+];
+
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+let engine        = null;
+let modelLoaded   = false;
+let selectedModel = MODEL_GROUPS[1].models[3]; // Llama 3.2 3B default
+let charData      = null;
+let charAvatarUrl = null;
+let chatHistory   = [];
+let isGenerating  = false;
+let cacheMap      = {};     // modelId -> bool
+let deferredInstall = null;
+
+// ══════════════════════════════════════════════════
+// DOM
+// ══════════════════════════════════════════════════
+const modelList      = document.getElementById('model-list');
+const loadBtn        = document.getElementById('load-btn');
+const progressWrap   = document.getElementById('progress-wrap');
+const progressFill   = document.getElementById('progress-bar-fill');
+const progressText   = document.getElementById('progress-text');
+const statusDot      = document.getElementById('status-dot');
+const statusText     = document.getElementById('status-text');
+const dropZone       = document.getElementById('drop-zone');
+const cardFileInput  = document.getElementById('card-file-input');
+const charCard       = document.getElementById('char-card');
+const charAvatar     = document.getElementById('char-avatar');
+const charAvatarPh   = document.getElementById('char-avatar-placeholder');
+const charName       = document.getElementById('char-name');
+const charPersona    = document.getElementById('char-persona');
+const newChatBtn     = document.getElementById('new-chat-btn');
+const tempSlider     = document.getElementById('temp-slider');
+const tempVal        = document.getElementById('temp-val');
+const maxtokSlider   = document.getElementById('maxtok-slider');
+const maxtokVal      = document.getElementById('maxtok-val');
+const userNameInput  = document.getElementById('user-name-input');
+const messages       = document.getElementById('messages');
+const welcome        = document.getElementById('welcome');
+const typingIndicator= document.getElementById('typing-indicator');
+const userInput      = document.getElementById('user-input');
+const sendBtn        = document.getElementById('send-btn');
+const topbarName     = document.getElementById('topbar-name');
+const topbarHint     = document.getElementById('topbar-hint');
+const topbarAvatar   = document.getElementById('topbar-avatar');
+const topbarAvatarPh = document.getElementById('topbar-avatar-ph');
+const topbarModelBadge= document.getElementById('topbar-model-badge');
+const toast          = document.getElementById('toast');
+const regenBtn       = document.getElementById('regen-btn');
+const offlineBadge   = document.getElementById('offline-badge');
+const installBanner  = document.getElementById('install-banner');
+
+// ══════════════════════════════════════════════════
+// SERVICE WORKER REGISTRATION
+// ══════════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      console.log('[SW] registered', reg.scope);
+    }).catch(err => {
+      console.warn('[SW] registration failed', err);
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════
+// PWA INSTALL PROMPT
+// ══════════════════════════════════════════════════
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;
+  installBanner.style.display = 'block';
+  installBanner.textContent = '📲 Install TavernLocal as an app';
+});
+
+installBanner.addEventListener('click', async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  const { outcome } = await deferredInstall.userChoice;
+  if (outcome === 'accepted') installBanner.style.display = 'none';
+  deferredInstall = null;
+});
+
+// ══════════════════════════════════════════════════
+// OFFLINE DETECTION
+// ══════════════════════════════════════════════════
+function updateOnlineStatus() {
+  offlineBadge.style.display = navigator.onLine ? 'none' : 'block';
+}
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+// ══════════════════════════════════════════════════
+// CACHE DETECTION
+// WebLLM stores model files in the browser Cache API
+// under keys that include the model id. We scan those
+// to mark which models are already downloaded.
+// ══════════════════════════════════════════════════
+async function checkCachedModels() {
+  if (!('caches' in window)) return;
+  try {
+    const cacheNames = await caches.keys();
+    const allModels  = MODEL_GROUPS.flatMap(g => g.models);
+
+    for (const m of allModels) {
+      // WebLLM cache keys contain the model id
+      const isCached = cacheNames.some(name => name.includes(m.id));
+      cacheMap[m.id] = isCached;
+    }
+    renderModelList();
+  } catch(e) {
+    // Permissions or privacy mode — just render without cache info
+    renderModelList();
+  }
+}
+
+// ══════════════════════════════════════════════════
+// MODEL LIST RENDERING
+// ══════════════════════════════════════════════════
+function renderModelList() {
+  modelList.innerHTML = '';
+  for (const group of MODEL_GROUPS) {
+    const groupLabel = document.createElement('div');
+    groupLabel.className = 'model-group-label';
+    groupLabel.textContent = group.label;
+    modelList.appendChild(groupLabel);
+
+    for (const m of group.models) {
+      const item = document.createElement('div');
+      item.className = 'model-item' + (m.id === selectedModel.id ? ' selected' : '');
+      item.dataset.id = m.id;
+
+      const cached = cacheMap[m.id];
+      const badgeClass = cached === true ? 'cached' : cached === false ? 'uncached' : 'checking';
+      const badgeText  = cached === true ? '✓ cached' : cached === false ? '✗ not cached' : '…';
+
+      item.innerHTML = `
+        <div class="model-item-info">
+          <div class="model-item-name">${m.name}${m.star ? ' ★' : ''}</div>
+          <div class="model-item-meta">${m.size} · ${m.ctx} ctx</div>
+        </div>
+        <div class="cache-badge ${badgeClass}">${badgeText}</div>
+      `;
+
+      item.addEventListener('click', () => selectModel(m));
+      modelList.appendChild(item);
+    }
+  }
+}
+
+function selectModel(m) {
+  selectedModel = m;
+  renderModelList();
+}
+
+// Init model list immediately (badges show "…"), then check cache
+renderModelList();
+checkCachedModels();
+
+// ══════════════════════════════════════════════════
+// LOAD MODEL
+// ══════════════════════════════════════════════════
+loadBtn.addEventListener('click', async () => {
+  if (!selectedModel) { showToast('Pick a model first.', 'error'); return; }
+
+  setStatus('loading', 'Downloading / loading…');
+  loadBtn.disabled = true;
+  progressWrap.style.display = 'block';
+  progressFill.style.width = '0%';
+
+  try {
+    // If engine exists and a different model is selected, unload first
+    if (engine) {
+      await engine.unload?.();
+      engine = null;
+      modelLoaded = false;
+    }
+
+    engine = new webllm.MLCEngine({
+      initProgressCallback: (report) => {
+        const pct = Math.round((report.progress || 0) * 100);
+        progressFill.style.width = pct + '%';
+        progressText.textContent = report.text || `Loading… ${pct}%`;
+      }
+    });
+
+    await engine.reload(selectedModel.id);
+
+    modelLoaded = true;
+    setStatus('ready', `${selectedModel.name}`);
+    progressText.textContent = '✓ Ready — model cached in browser';
+    progressFill.style.width = '100%';
+
+    topbarModelBadge.textContent = selectedModel.name;
+    topbarModelBadge.style.display = 'block';
+    topbarHint.textContent = charData ? 'Ready to roleplay ✨' : 'Now load a character card';
+
+    showToast('Model loaded! Drop a character card.', 'success');
+    loadBtn.disabled = false;
+    loadBtn.textContent = '⟳ Switch Model';
+
+    // Update cache badges
+    cacheMap[selectedModel.id] = true;
+    renderModelList();
+    checkReady();
+
+  } catch(e) {
+    setStatus('error', 'Load failed');
+    progressText.textContent = '✗ ' + (e.message || 'Error loading model');
+    showToast('Model load failed: ' + (e.message || e), 'error');
+    loadBtn.disabled = false;
+  }
+});
+
+function setStatus(cls, label) {
+  statusDot.className = cls;
+  statusText.textContent = label;
+}
+
+// ══════════════════════════════════════════════════
+// SLIDERS
+// ══════════════════════════════════════════════════
+tempSlider.addEventListener('input',   () => tempVal.textContent   = tempSlider.value);
+maxtokSlider.addEventListener('input', () => maxtokVal.textContent = maxtokSlider.value);
+
+// ══════════════════════════════════════════════════
+// CHARACTER CARD LOADING
+// ══════════════════════════════════════════════════
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleCardFile(e.dataTransfer.files[0]);
+});
+cardFileInput.addEventListener('change', () => {
+  if (cardFileInput.files[0]) handleCardFile(cardFileInput.files[0]);
+});
+
+async function handleCardFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  try {
+    if (ext === 'json') {
+      const raw = JSON.parse(await file.text());
+      charData      = raw.data || raw;
+      charAvatarUrl = null;
+      displayCharCard();
+    } else if (ext === 'png') {
+      await parsePngCard(file);
+    } else {
+      showToast('Use a .png or .json SillyTavern card.', 'error');
+    }
+  } catch(e) {
+    showToast('Card parse error: ' + e.message, 'error');
+  }
+}
+
+// PNG tEXt chunk parser — reads the embedded base64 JSON
+async function parsePngCard(file) {
+  const u8  = new Uint8Array(await file.arrayBuffer());
+  charAvatarUrl = await blobToDataUrl(new Blob([u8], {type:'image/png'}));
+
+  let pos = 8;
+  while (pos < u8.length - 12) {
+    const len  = readU32(u8, pos); pos += 4;
+    const type = String.fromCharCode(u8[pos], u8[pos+1], u8[pos+2], u8[pos+3]); pos += 4;
+    const data = u8.slice(pos, pos + len); pos += len + 4; // +4 CRC
+
+    if (type === 'tEXt') {
+      const kEnd = data.indexOf(0);
+      if (kEnd === -1) continue;
+      const keyword = String.fromCharCode(...data.slice(0, kEnd));
+      if (keyword.toLowerCase() === 'chara') {
+        const b64 = String.fromCharCode(...data.slice(kEnd + 1));
+        const raw = JSON.parse(atob(b64));
+        charData = raw.data || raw;
+        displayCharCard();
+        return;
+      }
+    }
+  }
+  throw new Error('No chara chunk found. Is this a SillyTavern PNG card?');
+}
+
+function readU32(u8, o) { return (u8[o]<<24)|(u8[o+1]<<16)|(u8[o+2]<<8)|u8[o+3]; }
+function blobToDataUrl(blob) {
+  return new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(new Error('FileReader failed')); r.readAsDataURL(blob); });
+}
+
+// ══════════════════════════════════════════════════
+// DISPLAY CHARACTER
+// ══════════════════════════════════════════════════
+function displayCharCard() {
+  if (!charData) return;
+  const name = charData.name || 'Unknown';
+  charName.textContent  = name;
+  charPersona.textContent = (charData.description || '').slice(0, 180);
+
+  if (charAvatarUrl) {
+    charAvatar.src = charAvatarUrl; charAvatar.style.display = 'block';
+    charAvatarPh.style.display = 'none';
+    topbarAvatar.src = charAvatarUrl; topbarAvatar.style.display = 'block';
+    topbarAvatarPh.style.display = 'none';
+  } else {
+    charAvatar.style.display = 'none'; charAvatarPh.style.display = 'flex';
+    topbarAvatar.style.display = 'none'; topbarAvatarPh.style.display = 'flex';
+  }
+
+  topbarName.textContent = name;
+  charCard.style.display = 'block';
+  dropZone.style.display = 'none';
+  showToast(`"${name}" loaded!`, 'success');
+  checkReady();
+  startNewChat();
+}
+
+newChatBtn.addEventListener('click', startNewChat);
+
+function startNewChat() {
+  chatHistory = [];
+  messages.innerHTML = '';
+  if (!charData) return;
+  const first = charData.first_mes;
+  if (first) {
+    const text = applyMacros(first);
+    appendMessage('char', text);
+    chatHistory.push({ role: 'assistant', content: text });
+  }
+}
+
+// ══════════════════════════════════════════════════
+// READY CHECK
+// ══════════════════════════════════════════════════
+function checkReady() {
+  const ok = modelLoaded && charData;
+  userInput.disabled = !ok;
+  sendBtn.disabled   = !ok;
+  if (ok) {
+    topbarHint.textContent = 'Ready to roleplay ✨';
+    userInput.placeholder  = `Speak to ${charData.name || 'the character'}… (Shift+Enter for newline)`;
+  }
+}
+
+// ══════════════════════════════════════════════════
+// SYSTEM PROMPT BUILDER
+// ══════════════════════════════════════════════════
+function buildSystemPrompt() {
+  const c    = charData;
+  const user = userNameInput.value.trim() || 'You';
+  const char = c.name || 'Character';
+  let sys = '';
+
+  if (c.system_prompt) sys += c.system_prompt + '\n\n';
+
+  sys += `You are ${char}. Stay in character at all times. Never break character or refer to yourself as an AI.\n\n`;
+  if (c.description) sys += `[Description]\n${c.description}\n\n`;
+  if (c.personality) sys += `[Personality]\n${c.personality}\n\n`;
+  if (c.scenario)    sys += `[Scenario]\n${c.scenario}\n\n`;
+  if (c.mes_example) sys += `[Example dialogue]\n${c.mes_example}\n\n`;
+
+  sys += `The user's name is ${user}. Use *asterisks* for actions and "quotes" for speech. Keep responses immersive and in-character.`;
+  return applyMacros(sys);
+}
+
+function applyMacros(text) {
+  const char = charData?.name || 'Character';
+  const user = userNameInput.value.trim() || 'You';
+  return text.replace(/\{\{char\}\}/gi, char).replace(/\{\{user\}\}/gi, user);
+}
+
+// ══════════════════════════════════════════════════
+// MESSAGING
+// ══════════════════════════════════════════════════
+sendBtn.addEventListener('click', sendMessage);
+userInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+document.querySelectorAll('.hint-chip[data-hint]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    userInput.value += (userInput.value ? ' ' : '') + chip.dataset.hint;
+    userInput.focus();
+  });
+});
+
+regenBtn.addEventListener('click', async () => {
+  if (!modelLoaded || !charData || isGenerating) return;
+  const idx = [...chatHistory].reverse().findIndex(m => m.role === 'assistant');
+  if (idx === -1) return;
+  chatHistory.splice(chatHistory.length - 1 - idx, 1);
+  const bubbles = messages.querySelectorAll('.msg.char');
+  if (bubbles.length) bubbles[bubbles.length - 1].remove();
+  await generateResponse();
+});
+
+async function sendMessage() {
+  if (isGenerating || !modelLoaded || !charData) return;
+  const raw = userInput.value.trim();
+  if (!raw) return;
+  userInput.value = '';
+  autoResize();
+
+  if (welcome?.parentNode === messages) messages.removeChild(welcome);
+
+  const text = applyMacros(raw);
+  appendMessage('user', text);
+  chatHistory.push({ role: 'user', content: text });
+  await generateResponse();
+}
+
+async function generateResponse() {
+  isGenerating = true;
+  sendBtn.disabled = true;
+  userInput.disabled = true;
+  typingIndicator.classList.add('show');
+  messages.appendChild(typingIndicator);
+  scrollBottom();
+
+  try {
+    const msgs = [{ role: 'system', content: buildSystemPrompt() }, ...chatHistory];
+    const stream = await engine.chat.completions.create({
+      messages: msgs,
+      temperature: parseFloat(tempSlider.value),
+      max_tokens: parseInt(maxtokSlider.value),
+      stream: true,
+    });
+
+    typingIndicator.classList.remove('show');
+    const bubbleEl = createStreamingBubble();
+    let full = '';
+
+    for await (const chunk of stream) {
+      full += chunk.choices[0]?.delta?.content || '';
+      updateStreamingBubble(bubbleEl, full);
+      scrollBottom();
+    }
+
+    // Finalize — remove cursor
+    bubbleEl.innerHTML = renderText(full);
+    chatHistory.push({ role: 'assistant', content: full });
+
+  } catch(e) {
+    typingIndicator.classList.remove('show');
+    showToast('Generation error: ' + (e.message || e), 'error');
+  }
+
+  isGenerating = false;
+  sendBtn.disabled = false;
+  userInput.disabled = false;
+  userInput.focus();
+  scrollBottom();
+}
+
+// ══════════════════════════════════════════════════
+// MESSAGE DOM HELPERS
+// ══════════════════════════════════════════════════
+function appendMessage(role, text) {
+  if (welcome?.parentNode === messages) messages.removeChild(welcome);
+  const isChar = role === 'char';
+  const name   = isChar ? (charData?.name || 'Character') : (userNameInput.value || 'You');
+
+  const div  = document.createElement('div');
+  div.className = 'msg ' + role;
+
+  const av   = document.createElement('div');
+  if (isChar && charAvatarUrl) {
+    const img = document.createElement('img'); img.src = charAvatarUrl; img.className = 'msg-avatar'; av.appendChild(img);
+  } else {
+    const ph  = document.createElement('div'); ph.className = 'msg-avatar-ph'; ph.textContent = isChar ? '🧙' : '🧑'; av.appendChild(ph);
+  }
+
+  const body   = document.createElement('div'); body.className = 'msg-body';
+  const sender = document.createElement('div'); sender.className = 'msg-sender'; sender.textContent = name;
+  const bubble = document.createElement('div'); bubble.className = 'msg-bubble'; bubble.innerHTML = renderText(text);
+
+  body.appendChild(sender); body.appendChild(bubble);
+  div.appendChild(av); div.appendChild(body);
+  messages.appendChild(div);
+  scrollBottom();
+  return div;
+}
+
+function createStreamingBubble() {
+  if (welcome?.parentNode === messages) messages.removeChild(welcome);
+  const div    = document.createElement('div'); div.className = 'msg char';
+  const av     = document.createElement('div');
+  if (charAvatarUrl) {
+    const img = document.createElement('img'); img.src = charAvatarUrl; img.className = 'msg-avatar'; av.appendChild(img);
+  } else {
+    const ph = document.createElement('div'); ph.className = 'msg-avatar-ph'; ph.textContent = '🧙'; av.appendChild(ph);
+  }
+  const body   = document.createElement('div'); body.className = 'msg-body';
+  const sender = document.createElement('div'); sender.className = 'msg-sender'; sender.textContent = charData?.name || 'Character';
+  const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
+  body.appendChild(sender); body.appendChild(bubble);
+  div.appendChild(av); div.appendChild(body);
+  messages.appendChild(div);
+  return bubble;
+}
+
+function updateStreamingBubble(el, text) {
+  el.innerHTML = renderText(text) + '<span style="opacity:0.4;animation:pulse 1s infinite">▌</span>';
+}
+
+function renderText(text) {
+  let t = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  t = t.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  t = t.replace(/\n/g, '<br>');
+  return t;
+}
+
+function scrollBottom() { messages.scrollTop = messages.scrollHeight; }
+
+userInput.addEventListener('input', autoResize);
+function autoResize() {
+  userInput.style.height = 'auto';
+  userInput.style.height = Math.min(userInput.scrollHeight, 130) + 'px';
+}
+
+// ══════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, type='') {
+  clearTimeout(toastTimer);
+  toast.textContent = msg;
+  toast.className = 'show ' + type;
+  toastTimer = setTimeout(() => toast.className = '', 3500);
+}
+</script>
+</body>
+</html>

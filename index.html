@@ -399,13 +399,25 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
       <div class="sec-label" data-sec="gen">✦ Generation <span class="toggle-arrow">▾</span></div>
       <div class="sec-body" id="sec-gen">
         <div class="setting-row"><label>Temperature</label><input type="range" id="temp-slider" min="0" max="2" step="0.05" value="0.8"/><span class="setting-val" id="temp-val">0.8</span></div>
-        <div class="setting-row"><label>Max tokens</label><input type="range" id="maxtok-slider" min="64" max="1200" step="16" value="400"/><span class="setting-val" id="maxtok-val">400</span></div>
-        <div class="setting-row"><label>Your name</label><input id="user-name-input" type="text" value="You"/></div>
-        <div class="setting-row" id="ctx-trim-row">
-          <label>Context turns</label>
-          <input type="range" id="ctx-slider" min="4" max="50" step="2" value="20"/>
-          <span class="setting-val" id="ctx-val">20</span>
+        <div class="setting-row">
+          <label>Max tokens</label>
+          <div style="display:flex;gap:4px;align-items:center">
+            <input type="number" id="maxtok-input" min="1" value="2048" style="width:72px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-main);font-family:'Share Tech Mono',monospace;font-size:10px;padding:3px 6px;border-radius:3px" placeholder="tokens"/>
+            <label style="display:flex;align-items:center;gap:3px;font-size:9px;color:var(--text-dim);cursor:pointer;white-space:nowrap">
+              <input type="checkbox" id="maxtok-unlimited" style="accent-color:var(--accent)"/> ∞
+            </label>
+          </div>
         </div>
+        <div class="setting-row">
+          <label>Context limit</label>
+          <div style="display:flex;gap:4px;align-items:center">
+            <input type="number" id="ctx-input" min="1" value="32768" style="width:72px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-main);font-family:'Share Tech Mono',monospace;font-size:10px;padding:3px 6px;border-radius:3px" placeholder="tokens"/>
+            <label style="display:flex;align-items:center;gap:3px;font-size:9px;color:var(--text-dim);cursor:pointer;white-space:nowrap">
+              <input type="checkbox" id="ctx-unlimited" checked style="accent-color:var(--accent)"/> ∞
+            </label>
+          </div>
+        </div>
+        <div class="setting-row"><label>Your name</label><input id="user-name-input" type="text" value="You"/></div>
       </div>
     </div>
 
@@ -568,9 +580,9 @@ const userInput=$('user-input'), sendBtn=$('send-btn');
 const charSendingAs=$('char-sending-as'), regenBtn=$('regen-btn');
 // settings
 const tempSlider=$('temp-slider'), tempVal=$('temp-val');
-const maxtokSlider=$('maxtok-slider'), maxtokVal=$('maxtok-val');
+const maxtokInput=$('maxtok-input'), maxtokUnlimited=$('maxtok-unlimited');
 const userNameInput=$('user-name-input'), userPersonaInput=$('user-persona-input');
-const ctxSlider=$('ctx-slider'), ctxVal=$('ctx-val');
+const ctxInput=$('ctx-input'), ctxUnlimited=$('ctx-unlimited');
 // modal
 const charModal=$('char-modal'), charModalClose=$('char-modal-close');
 const charModalAvatar=$('char-modal-avatar'), charModalAvatarPh=$('char-modal-avatar-ph');
@@ -856,8 +868,10 @@ function setWllmStatus(cls,label){statusDot.className=cls;statusTextEl.textConte
 // SLIDERS
 // ══════════════════════════════════════════════════
 tempSlider.addEventListener('input',()=>tempVal.textContent=tempSlider.value);
-maxtokSlider.addEventListener('input',()=>maxtokVal.textContent=maxtokSlider.value);
-ctxSlider.addEventListener('input',()=>ctxVal.textContent=ctxSlider.value);
+maxtokUnlimited.addEventListener('change',()=>{maxtokInput.disabled=maxtokUnlimited.checked;});
+ctxUnlimited.addEventListener('change',()=>{ctxInput.disabled=ctxUnlimited.checked;});
+// init disabled states
+maxtokInput.disabled=false; ctxInput.disabled=true;
 
 // ══════════════════════════════════════════════════
 // TOPBAR BADGE
@@ -1185,11 +1199,34 @@ async function sendMessage(){
   if(welcome?.parentNode===messages)messages.removeChild(welcome);
   const t=applyMacros(raw);
   appendMessage('user',t);
-  const maxTurns=parseInt(ctxSlider.value)*2;
   chatHistory.push({role:'user',content:t});
-  // trim old history
-  if(chatHistory.length>maxTurns) chatHistory=chatHistory.slice(chatHistory.length-maxTurns);
+  // trim context by token budget if not unlimited
+  if(!ctxUnlimited.checked){
+    const budget=parseInt(ctxInput.value)||32768;
+    trimHistoryToTokenBudget(budget);
+  }
   await generateResponse();
+}
+
+// ── Context trimming by token budget ─────────────────────────────────────────
+// Rough estimation: 1 token ≈ 4 chars (good enough for trimming)
+function estimateTokens(text){ return Math.ceil((text||'').length/4); }
+function trimHistoryToTokenBudget(budget){
+  // Reserve ~25% for system prompt + response headroom
+  const usable=Math.floor(budget*0.75);
+  let total=0;
+  // Walk backwards through history summing token estimates
+  let cutIdx=chatHistory.length;
+  for(let i=chatHistory.length-1;i>=0;i--){
+    const t=estimateTokens(chatHistory[i].content);
+    if(total+t>usable){ cutIdx=i+1; break; }
+    total+=t;
+    if(i===0) cutIdx=0;
+  }
+  if(cutIdx>0){
+    dlog('Context trim: dropped '+cutIdx+' msgs to fit ~'+budget+' token budget');
+    chatHistory=chatHistory.slice(cutIdx);
+  }
 }
 
 async function generateResponse(){
@@ -1221,7 +1258,7 @@ async function generateApi(){
     model:apiModelId,
     messages:msgs,
     temperature:parseFloat(tempSlider.value),
-    max_tokens:parseInt(maxtokSlider.value),
+    ...(maxtokUnlimited.checked?{}:{max_tokens:parseInt(maxtokInput.value)||2048}),
     stream:true,
   };
   // Pollinations extra
@@ -1287,7 +1324,7 @@ async function generateWllm(){
   dlog('WLLM '+wllmSelected.id+' turns='+msgs.length);
   const stream=await wllmEngine.chat.completions.create({
     messages:msgs,temperature:parseFloat(tempSlider.value),
-    max_tokens:parseInt(maxtokSlider.value),stream:true,
+    ...(maxtokUnlimited.checked?{}:{max_tokens:parseInt(maxtokInput.value)||2048}),stream:true,
   });
   typingIndicator.classList.remove('show');
   const bubbleEl=createStreamingBubble();
